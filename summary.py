@@ -1,48 +1,43 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from unidecode import unidecode
 
 from openpyxl.worksheet.worksheet import Worksheet
 
 
-MONTHLY_SUMMARY_WIDTH: int = 33
+MONTHLY_SUMMARY_WIDTH: int = 31
 MONTHLY_SUMMARY_HEIGHT: int = 16
 
 
 @dataclass
 class MonthlyEntry:
-    number: str
-    title: str
+    days: int = 0
     hours: list[int] = field(init=False)
 
     def __post_init__(self):
-        self.hours = [0] * 31
+        self.hours = [0] * MONTHLY_SUMMARY_WIDTH
 
     def __add__(self, other):
         if type(self) is not type(other):
             raise AttributeError(f"'{type(other)}' can't be added to '{type(self)}'.")
-        # unidecode is a temporary fix for typos in data
-        # if unidecode(str(self.number)) != unidecode(str(other.number)) or unidecode(str(self.title)) != unidecode(str(other.title)):
-        #     raise AttributeError(f"Can't add entries with non matching descriptions.")
 
-        result = MonthlyEntry(self.number, self.title)
+        result = MonthlyEntry(self.days + other.days)
         result.hours = [h1 + h2 for h1, h2 in zip(self.hours, other.hours)]
         return result
 
     @classmethod
     def parse(cls, row: tuple) -> MonthlyEntry:
-        entry: MonthlyEntry = cls(row[0], row[1])
-        for i, cell in enumerate(row[2:]):
+        entry: MonthlyEntry = cls()
+        for i, cell in enumerate(row):
             entry.hours[i] = int(cell) if cell else 0
+        entry.days = entry.calc_days()
         return entry
 
     @property
     def total_hours(self) -> int:
         return sum(self.hours)
 
-    @property
-    def days(self) -> int:
+    def calc_days(self) -> int:
         return sum(map(lambda x: 1 if x > 0 else 0, self.hours))
 
 
@@ -63,9 +58,6 @@ class MonthlySummary:
 
     @classmethod
     def agregate(cls, summaries: list[MonthlySummary]) -> MonthlySummary:
-        agregation = MonthlySummary()
-        agregation.entries = [MonthlyEntry(entry.number, entry.title) for entry in summaries[0].entries]
-        for summary in summaries:
-            agregation.entries = [entry1 + entry2 for entry1, entry2 in zip(agregation.entries, summary.entries)]
-
-        return agregation
+        return MonthlySummary([sum(entries, start=MonthlyEntry())
+                               for entries
+                               in zip(*(summary.entries for summary in summaries))])

@@ -30,4 +30,4 @@ class Employee:
 
     def add_monthly_summary(self, key: str, worksheet: Worksheet):
         start_cell: Cell = find_cell_by_value(worksheet, "Lp.", max_row=10, max_col=10)
-        self.monthly_summaries[key] = MonthlySummary.parse(worksheet, start_cell.row + 1, start_cell.column)
+        self.monthly_summaries[key] = MonthlySummary.parse(worksheet, start_cell.row + 1, start_cell.column + 2)
