@@ -2,6 +2,7 @@ from __future__ import annotations
 import os
 
 from typing import Optional
+from calendar import monthrange
 
 from openpyxl import load_workbook
 from openpyxl.workbook.workbook import Workbook
@@ -9,6 +10,7 @@ from openpyxl.worksheet.worksheet import Worksheet
 from openpyxl.cell.cell import Cell
 
 from employee import Employee
+from functions import find_first
 from gender import Gender
 from summary import MonthlySummary
 
@@ -24,49 +26,41 @@ TESTING_FILE: str = "I STYCZEŃ\\BANCERZ ELŻBIETA.xlsx"
 DIR: str = "I STYCZEŃ"
 EMPLOYEES_FILE: str = "Pracownicy.xlsx"
 
+months: list[str] = ["Styczeń", "Luty", "Marzec",
+                     "Kwiecień", "Maj", "Czerwiec",
+                     "Lipiec", "Sierpień", "Wrzesień",
+                     "Październik", "Listopad", "Grudzień"]
+
 employees: list[Employee] = get_employees(load_workbook(os.path.join(WORKING_DIRECTORY, EMPLOYEES_FILE)))
-s = 0
-for employee in employees:
-    # print(employee.name, employee.last_name, employee.gender)
-    # print()
-    employee.add_monthly_summary("styczeń",
-                                 load_workbook(employee
-                                               .find_summary(os.path.join(WORKING_DIRECTORY, DIR)))
-                                 .active)
-    s += employee.monthly_summaries["styczeń"].entries[7].total_hours
-    print(employee.monthly_summaries["styczeń"].entries[7].total_hours)
-print(s)
-agregation: MonthlySummary = MonthlySummary.agregate([employee.monthly_summaries["styczeń"] for employee in employees])
-for entry in agregation.entries:
-    print(entry.total_hours, entry.hours)
-# workbook: Workbook = load_workbook(os.path.join(WORKING_DIRECTORY, TESTING_FILE))
-# worksheet: Worksheet = workbook.active
-#
-# start_cell: Cell = find_cell_by_value(worksheet, "Lp.", max_row=20, max_col=40)
-# if start_cell:
-#     summary: MonthlySummary = MonthlySummary.parse(worksheet, start_cell.row + 1, start_cell.column)
-#     for entry in summary.entries:
-#         print(f"{entry.number} {entry.title} suma godzin: {entry.total_hours} ilość dni: {entry.days}")
+dirs = [file for file in os.listdir(WORKING_DIRECTORY) if os.path.isdir(os.path.join(WORKING_DIRECTORY, file))]
 
+for month_no, month in enumerate(months):
+    # print(month)
+    dir_index = find_first(dirs, lambda x: month.lower() in x.lower())
+    directory = dirs[dir_index] if dir_index != -1 else None
+    for i, employee in enumerate(employees):
+        # print(f"  {i}. {employee.name} {employee.last_name}")
+        if directory:
+            summary_file = employee.find_summary(os.path.join(WORKING_DIRECTORY, directory))
+            if summary_file:
+                try:
+                    employee.monthly_summaries[month] = MonthlySummary.get_from_worksheet(
+                        load_workbook(summary_file)
+                        .active,
+                        width=monthrange(2021, month_no + 1)[1]
+                    )
+                    continue
+                except Exception as e:
+                    employee.monthly_summaries[month] = MonthlySummary.empty()
+        employee.monthly_summaries[month] = MonthlySummary.empty()
 
-# workbooks = []
-#
-# for dir in os.listdir(WORKING_DIRECTORY):
-#     number, name = dir.split(' ', 1)
-#     t = "Zestawienie miesieczne" if number != "XIII" else "Zestawienie roczne", name
-#     print(t)
+for k, v in employees[7].monthly_summaries.items():
+    print(k)
+    for sv in v.entries:
+        print(" ", sv.total_hours, sv.hours)
 
-
-# for path, dirs, files in os.walk(WORKING_DIRECTORY):
-#     print(path, dirs, files)
-#     workbooks: list[Workbook] = [*workbooks, *[load_workbook(os.path.join(path, file)) for file in files if file.endswith("xlsx")]]
-
-# cells: list[Cell] = []
-# for workbook in workbooks:
-#     sheet: Worksheet = workbook[workbook.sheetnames[0]]
-#     cell = find_cell_by_value(sheet, "Lp.", max_col=40, max_row=20)
-#     if cell:
-#         cells.append(cell)
-#
-# for i, cell in enumerate(cells):
-#     print(i, cell)
+# agregation: MonthlySummary = MonthlySummary.agregate([employee.monthly_summaries["styczeń"]
+#                                                       for employee
+#                                                       in employees])
+# for entry in agregation.entries:
+#     print(f"Godziny: {entry.total_hours}, dni: {entry.days}, wykaz: {entry.hours}")

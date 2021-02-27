@@ -9,3 +9,7 @@ def find_cell_by_value(worksheet: Worksheet, value: str, **kwargs) -> Optional[C
         for cell in row:
             if cell.value == value:
                 return cell
+
+
+def find_first(lst: list, predicate: callable) -> int:
+    return next((i for i, value in enumerate(lst) if predicate(value)), -1)
