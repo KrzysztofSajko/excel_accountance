@@ -49,7 +49,7 @@ class MonthlySummary:
 
     @classmethod
     def empty(cls) -> MonthlySummary:
-        return MonthlySummary([MonthlyEntry.empty() for _ in range(MONTHLY_SUMMARY_HEIGHT)])
+        return cls([MonthlyEntry.empty() for _ in range(MONTHLY_SUMMARY_HEIGHT)])
 
     @classmethod
     def parse(cls, worksheet: Worksheet, start_row: int, start_column: int, width: int) -> MonthlySummary:

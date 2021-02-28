@@ -1,18 +1,18 @@
 from __future__ import annotations
+
 import os
 
-from typing import Optional
 from calendar import monthrange
 
 from openpyxl import load_workbook
 from openpyxl.workbook.workbook import Workbook
-from openpyxl.worksheet.worksheet import Worksheet
-from openpyxl.cell.cell import Cell
+from workalendar.europe import Poland
 
 from employee import Employee
 from functions import find_first
 from gender import Gender
 from summary import MonthlySummary
+from writer import Writer
 
 
 def get_employees(workbook: Workbook) -> list[Employee]:
@@ -22,8 +22,6 @@ def get_employees(workbook: Workbook) -> list[Employee]:
 
 
 WORKING_DIRECTORY: str = "C:\\Users\\User\\Desktop\\ROK 2021"
-TESTING_FILE: str = "I STYCZEŃ\\BANCERZ ELŻBIETA.xlsx"
-DIR: str = "I STYCZEŃ"
 EMPLOYEES_FILE: str = "Pracownicy.xlsx"
 
 months: list[str] = ["Styczeń", "Luty", "Marzec",
@@ -54,13 +52,9 @@ for month_no, month in enumerate(months):
                     employee.monthly_summaries[month] = MonthlySummary.empty()
         employee.monthly_summaries[month] = MonthlySummary.empty()
 
-for k, v in employees[7].monthly_summaries.items():
-    print(k)
-    for sv in v.entries:
-        print(" ", sv.total_hours, sv.hours)
+extra_holidays: list = [
 
-# agregation: MonthlySummary = MonthlySummary.agregate([employee.monthly_summaries["styczeń"]
-#                                                       for employee
-#                                                       in employees])
-# for entry in agregation.entries:
-#     print(f"Godziny: {entry.total_hours}, dni: {entry.days}, wykaz: {entry.hours}")
+]
+
+writer = Writer("Ewidencja godzin 2021.xlsx", 2021, employees, Poland(), extra_holidays, months)
+writer.create()
