@@ -1,3 +1,4 @@
+from collections import Callable
 from dataclasses import dataclass, field
 from datetime import date
 from calendar import monthrange
@@ -48,14 +49,14 @@ class Writer:
         self.workbook = Workbook(self.filename)
         self.formats = {
             "name": self.workbook.add_format({'font_size': 15, 'bold': True}),
-            "header": self.workbook.add_format({'font_size': 12, 'bold': True, 'align': 'center'}),
-            "label": self.workbook.add_format({'font_size': 8, 'bold': True, 'text_wrap': True}),
-            "content": self.workbook.add_format({'font_size': 10, 'align': 'center'}),
-            "summary": self.workbook.add_format({'font_size': 12, 'align': 'center', 'bold': True}),
+            "header": self.workbook.add_format({'font_size': 12, 'bold': True, 'align': 'center', 'border': 1}),
+            "label": self.workbook.add_format({'font_size': 8, 'bold': True, 'text_wrap': True, 'border': 1}),
+            "content": self.workbook.add_format({'font_size': 10, 'align': 'center', 'border': 1}),
+            "summary": self.workbook.add_format({'font_size': 12, 'align': 'center', 'bold': True, 'border': 1}),
         }
         self.bg_colors = {
-            "holiday": "#00ffff",
-            "overday": "#ff0000"  # days that go over the range of month
+            "holiday": "#b3ecff",
+            "overday": "#ffb3b3"  # days that go over the range of month
         }
 
     def setup_sheet(self, title: str) -> Worksheet:
@@ -77,21 +78,25 @@ class Writer:
         if day <= monthrange(self.year, month)[1]:
             if self.calendar.is_working_day(date(self.year, month, day), extra_holidays=self.extra_holidays):
                 return base_format
-            bg_color = '#00ffff'
+            bg_color = self.bg_colors["holiday"]
         else:
-            bg_color = '#ff0000'
+            bg_color = self.bg_colors["overday"]
         new_format = self.copy_format(base_format)
         new_format.set_bg_color(bg_color)
         return new_format
+
+    def write_day_colored_row(self, sheet: Worksheet, base_format: Format, value_function: Callable, month: int,
+                              start_row: int = 0, start_col: int = 0):
+        for day in range(31):
+            cell_format = self.set_format_bg_color(base_format, month, day + 1)
+            sheet.write(start_row, start_col + day, value_function(day), cell_format)
 
     def setup_table(self, sheet: Worksheet, employee: Employee, row_no: int, month: int):
         def setup_header():
             sheet.write_string(row_no + 1, 0, "Lp.", self.formats["header"])
             sheet.write_blank(row_no + 1, 1,  None, self.formats["header"])
-
-            for iday, day in enumerate(range(1, 32)):
-                cell_format: Format = self.set_format_bg_color(self.formats["header"], month, day)
-                sheet.write_string(row_no + 1, 2 + iday, f"{day}", cell_format)
+            self.write_day_colored_row(sheet, self.formats["header"], lambda x: f"{x + 1}",
+                                       month, row_no + 1, 2)
             sheet.write_string(row_no + 1, 33, "Suma godzin", self.formats["header"])
             sheet.write_string(row_no + 1, 34, "Suma dni", self.formats["header"])
         # name
@@ -107,9 +112,10 @@ class Writer:
                            [label[1] for label in TABLE_ROW_LABELS],
                            self.formats["label"])
 
-    def fill_table_content(self, sheet: Worksheet, entries: list[MonthlyEntry], row_no: int):
+    def fill_table_content(self, sheet: Worksheet, entries: list[MonthlyEntry], row_no: int, month: int):
         for entry_no, entry in enumerate(entries):
-            sheet.write_row(row_no + entry_no, 2, entry.hours, self.formats["content"])
+            self.write_day_colored_row(sheet, self.formats["content"], lambda x: entry.hours[x],
+                                       month, row_no + entry_no, 2)
             sheet.write_formula(f"AH{row_no + 1 + entry_no}",
                                 f"=SUM(C{row_no + 1 + entry_no}:AG{row_no + 1 + entry_no})",
                                 self.formats["summary"])
@@ -122,18 +128,19 @@ class Writer:
             try:
                 self.workbook.close()
             except FileCreateError as exc:
-                decision = input(f"Exception caught in workbook.close(): {exc}\n"
-                                 f"Please close the file if it is open in Excel.\n"
-                                 f"Try to write file again? [Y/n]: ")
+                decision = input(f"Wyjątek przy próbie zapisania pliku: {exc}\n"
+                                 f"Zamknij plik {self.filename} jeśli jest otwarty.\n"
+                                 f"Czy chcesz ponownie spróbować zapisać? [T/n]: ")
                 if decision != 'n':
                     continue
             break
 
     def create(self):
-        for month_no, month in enumerate(self.months[:3]):
+        for month_no, month in enumerate(self.months):
             month_sheet: Worksheet = self.setup_sheet(month)
-            for employee_no, employee in enumerate(self.employees[:5]):
+            for employee_no, employee in enumerate(self.employees):
                 row_no = employee_no * 20
                 self.setup_table(month_sheet, employee, row_no, month_no + 1)
-                self.fill_table_content(month_sheet, employee.monthly_summaries[month].entries, row_no + 2)
+                self.fill_table_content(month_sheet, employee.monthly_summaries[month].entries,
+                                        row_no + 2, month_no + 1)
         self.save_and_exit()

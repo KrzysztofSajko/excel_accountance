@@ -32,6 +32,9 @@ class MonthlyEntry:
     def parse(cls, row: tuple) -> MonthlyEntry:
         entry: MonthlyEntry = cls()
         entry.hours = [int(cell) if cell else 0 for cell in row]
+        # pad with zeros to full length
+        if len(entry.hours) < MONTHLY_SUMMARY_WIDTH:
+            entry.hours = [*entry.hours, *[0 for _ in range(MONTHLY_SUMMARY_WIDTH - len(entry.hours))]]
         entry.days = entry.calc_days()
         return entry
 
