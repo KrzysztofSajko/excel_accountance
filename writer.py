@@ -156,10 +156,9 @@ class Writer:
             self.write_day_colored_row(sheet, self.formats["content"], lambda x: entry[x],
                                        month, row_no + entry_no, 2)
 
-    def fill_quarter_table_content(self, sheet: Worksheet, row_no: int, months: list[str]):
+    def fill_quarter_table_content(self, sheet: Worksheet, employee_no: int, entries: list):
         for i in range(len(TABLE_ROW_LABELS)):
-            row: int = row_no + 2 + i
-            sheet.write_row(row, 2, [f"={month}!{xy_to_cell(row, 33)}" for month in months], self.formats["content"])
+            sheet.write_row(employee_no * TABLE_HEIGHT + 2 + i, 2, [entry(employee_no, i, 2) for entry in entries], self.formats["content"])
 
     def close(self):
         while True:
@@ -202,10 +201,22 @@ class Writer:
                 month_range: int = (quarter_no + 1) * 3
                 self.setup_quarter_table(sheet, f"{employee.last_name} {employee.name}", employee_no * TABLE_HEIGHT,
                                          self.months[:month_range])
-                self.fill_quarter_table_content(sheet, employee_no * TABLE_HEIGHT, self.months[:month_range])
+                for label_no in range(len(TABLE_ROW_LABELS)):
+                    row: int = employee_no * TABLE_HEIGHT + 2 + label_no
+                    sheet.write_row(row, 2, [f"""={month}!{xy_to_cell(row, 33)}"""
+                                             for month in self.months[:month_range]], self.formats["content"])
 
-    def create_quarter_summary(self):
-        pass
+    def create_quarter_summary(self, month_summary_sheet: str):
+        sheet: Worksheet = self.setup_quarter_sheet("Podsumowanie kwartałów", 4)
+        for quarter_no, quarter in enumerate(QUARTERS):
+            month_range: int = (quarter_no + 1) * 3
+            self.setup_quarter_table(sheet, quarter, quarter_no * TABLE_HEIGHT, self.months[:month_range])
+            for label_no in range(len(TABLE_ROW_LABELS)):
+                row: int = quarter_no * TABLE_HEIGHT + 2 + label_no
+                sheet.write_row(row, 2,
+                                [f"""='{month_summary_sheet}'!{xy_to_cell(month_no * TABLE_HEIGHT + 2 + label_no, 33)}"""
+                                 for month_no, month in enumerate(self.months[:month_range])],
+                                self.formats["content"])
 
     def create_year_summary(self):
         pass
@@ -214,4 +225,5 @@ class Writer:
         self.create_month_sheets()
         self.create_month_summary()
         self.create_quarter_sheets()
+        self.create_quarter_summary("Podsumowanie miesięcy")
         self.close()
