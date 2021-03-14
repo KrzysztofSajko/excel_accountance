@@ -76,7 +76,7 @@ class Writer:
         sheet: Worksheet = self.workbook.add_worksheet(title)
         sheet.set_column(0, 0, width=3)
         sheet.set_column(1, 1, width=25)
-        sheet.set_column(2, 3 + (quarter + 1) * 3, width=8)
+        sheet.set_column(2, 3 + (quarter + 1) * 3, width=11)
         sheet.hide_zero()
         return sheet
 
@@ -131,7 +131,7 @@ class Writer:
     def setup_quarter_table(self, sheet: Worksheet, title: str, row_no: int, months: list[str]):
         table_width: int = 3 + len(months)
         # name
-        sheet.merge_range(row_no, 0, row_no, table_width, title, self.formats["name"])
+        sheet.merge_range(row_no, 0, row_no, table_width - 1, title, self.formats["name"])
         # header
         sheet.write_string(row_no + 1, 0, "Lp.", self.formats["header"])
         sheet.write_blank(row_no + 1, 1, None, self.formats["header"])
