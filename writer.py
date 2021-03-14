@@ -8,6 +8,7 @@ from xlsxwriter.exceptions import FileCreateError
 from xlsxwriter.worksheet import Worksheet
 from xlsxwriter.workbook import Workbook
 from xlsxwriter.format import Format
+from xlsxwriter.utility import xl_rowcol_to_cell as xy_to_cell
 
 from employee import Employee
 from summary import MonthlyEntry
@@ -31,6 +32,8 @@ TABLE_ROW_LABELS = [
     ("b)", "niepłatne"),
     ("7", "Nieobecności nieusprawiedliwione")
 ]
+
+TABLE_HEIGHT = 20
 
 
 @dataclass
@@ -91,7 +94,7 @@ class Writer:
             cell_format = self.set_format_bg_color(base_format, month, day + 1)
             sheet.write(start_row, start_col + day, value_function(day), cell_format)
 
-    def setup_table(self, sheet: Worksheet, employee: Employee, row_no: int, month: int):
+    def setup_table(self, sheet: Worksheet, title: str, row_no: int, month: int):
         def setup_header():
             sheet.write_string(row_no + 1, 0, "Lp.", self.formats["header"])
             sheet.write_blank(row_no + 1, 1,  None, self.formats["header"])
@@ -100,30 +103,28 @@ class Writer:
             sheet.write_string(row_no + 1, 33, "Suma godzin", self.formats["header"])
             sheet.write_string(row_no + 1, 34, "Suma dni", self.formats["header"])
         # name
-        sheet.merge_range(row_no, 0, row_no, 34, f"{employee.last_name} {employee.name}", self.formats["name"])
+        sheet.merge_range(row_no, 0, row_no, 34, title, self.formats["name"])
         # header
         setup_header()
         # labels
         sheet.write_column(row_no + 2, 0,
                            [label[0] for label in TABLE_ROW_LABELS],
                            self.formats["label"])
-        # summaries
         sheet.write_column(row_no + 2, 1,
                            [label[1] for label in TABLE_ROW_LABELS],
                            self.formats["label"])
+        # summaries
+        cell_ranges = [f"{xy_to_cell(row_no + i + 2, 2) }:{xy_to_cell(row_no + i + 2, 32)}"
+                       for i in range(len(TABLE_ROW_LABELS))]
+        sheet.write_column(row_no + 2, 33, map(lambda r: f"=SUM({r})", cell_ranges), self.formats["summary"])
+        sheet.write_column(row_no + 2, 34, map(lambda r: f'=COUNTIF({r}, ">0")', cell_ranges), self.formats["summary"])
 
-    def fill_table_content(self, sheet: Worksheet, entries: list[MonthlyEntry], row_no: int, month: int):
+    def fill_table_content(self, sheet: Worksheet, entries: list[list], row_no: int, month: int):
         for entry_no, entry in enumerate(entries):
-            self.write_day_colored_row(sheet, self.formats["content"], lambda x: entry.hours[x],
+            self.write_day_colored_row(sheet, self.formats["content"], lambda x: entry[x],
                                        month, row_no + entry_no, 2)
-            sheet.write_formula(f"AH{row_no + 1 + entry_no}",
-                                f"=SUM(C{row_no + 1 + entry_no}:AG{row_no + 1 + entry_no})",
-                                self.formats["summary"])
-            sheet.write_formula(f"AI{row_no + 1 + entry_no}",
-                                f'=COUNTIF(C{row_no + 1 + entry_no}:AG{row_no + 1 + entry_no}, ">0")',
-                                self.formats["summary"])
 
-    def save_and_exit(self):
+    def close(self):
         while True:
             try:
                 self.workbook.close()
@@ -135,12 +136,38 @@ class Writer:
                     continue
             break
 
-    def create(self):
+    def create_month_sheets(self):
         for month_no, month in enumerate(self.months):
             month_sheet: Worksheet = self.setup_sheet(month)
             for employee_no, employee in enumerate(self.employees):
-                row_no = employee_no * 20
-                self.setup_table(month_sheet, employee, row_no, month_no + 1)
-                self.fill_table_content(month_sheet, employee.monthly_summaries[month].entries,
+                row_no = employee_no * TABLE_HEIGHT
+                self.setup_table(month_sheet, f"{employee.last_name} {employee.name}", row_no, month_no + 1)
+                self.fill_table_content(month_sheet,
+                                        [entry.hours for entry in employee.monthly_summaries[month].entries],
                                         row_no + 2, month_no + 1)
-        self.save_and_exit()
+
+    def create_month_summary(self):
+        sheet: Worksheet = self.setup_sheet("Podsumowanie miesięcy")
+        for month_no, month in enumerate(self.months):
+            row_no = month_no * TABLE_HEIGHT
+            self.setup_table(sheet, month, row_no, month_no + 1)
+            lst = []
+            for y in range(16):
+                lst.append([f"""=SUM({', '.join([f'{month}!{xy_to_cell(2 + y + i * TABLE_HEIGHT, 2 + x)}' 
+                                                 for i in range(len(self.employees))])})"""
+                            for x in range(31)])
+            self.fill_table_content(sheet, lst, row_no + 2, month_no + 1)
+
+    def create_quarter_sheets(self):
+        pass
+
+    def create_quarter_summary(self):
+        pass
+
+    def create_year_summary(self):
+        pass
+
+    def create(self):
+        self.create_month_sheets()
+        self.create_month_summary()
+        self.close()

@@ -28,6 +28,7 @@ months: list[str] = ["Styczeń", "Luty", "Marzec",
                      "Kwiecień", "Maj", "Czerwiec",
                      "Lipiec", "Sierpień", "Wrzesień",
                      "Październik", "Listopad", "Grudzień"]
+year: int = 2021
 
 employees: list[Employee] = get_employees(load_workbook(os.path.join(WORKING_DIRECTORY, EMPLOYEES_FILE)))
 dirs = [file for file in os.listdir(WORKING_DIRECTORY) if os.path.isdir(os.path.join(WORKING_DIRECTORY, file))]
@@ -52,9 +53,7 @@ for month_no, month in enumerate(months):
                     employee.monthly_summaries[month] = MonthlySummary.empty()
         employee.monthly_summaries[month] = MonthlySummary.empty()
 
-extra_holidays: list = [
+extra_holidays: list = []
 
-]
-
-writer = Writer("Ewidencja godzin 2021.xlsx", 2021, employees, Poland(), extra_holidays, months)
+writer = Writer(f"Ewidencja godzin {year}.xlsx", year, employees, Poland(), extra_holidays, months)
 writer.create()
