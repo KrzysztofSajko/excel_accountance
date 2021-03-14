@@ -34,6 +34,7 @@ TABLE_ROW_LABELS = [
 ]
 
 TABLE_HEIGHT = 20
+QUARTERS: list[str] = ["Kwartał I", "Kwartał II", "Kwartał III", "Kwartał IV"]
 
 
 @dataclass
@@ -68,6 +69,14 @@ class Writer:
         sheet.set_column(1, 1, width=25)
         sheet.set_column(2, 32, width=3)
         sheet.set_column(33, 34, width=15)
+        sheet.hide_zero()
+        return sheet
+
+    def setup_quarter_sheet(self, title: str, quarter: int) -> Worksheet:
+        sheet: Worksheet = self.workbook.add_worksheet(title)
+        sheet.set_column(0, 0, width=3)
+        sheet.set_column(1, 1, width=25)
+        sheet.set_column(2, 3 + (quarter + 1) * 3, width=8)
         sheet.hide_zero()
         return sheet
 
@@ -119,6 +128,28 @@ class Writer:
         sheet.write_column(row_no + 2, 33, map(lambda r: f"=SUM({r})", cell_ranges), self.formats["summary"])
         sheet.write_column(row_no + 2, 34, map(lambda r: f'=COUNTIF({r}, ">0")', cell_ranges), self.formats["summary"])
 
+    def setup_quarter_table(self, sheet: Worksheet, title: str, row_no: int, months: list[str]):
+        table_width: int = 3 + len(months)
+        # name
+        sheet.merge_range(row_no, 0, row_no, table_width, title, self.formats["name"])
+        # header
+        sheet.write_string(row_no + 1, 0, "Lp.", self.formats["header"])
+        sheet.write_blank(row_no + 1, 1, None, self.formats["header"])
+        for month_no, month in enumerate(months):
+            sheet.write_string(row_no + 1, 2 + month_no, month, self.formats["header"])
+        sheet.write_string(row_no + 1, table_width - 1, "Suma", self.formats["header"])
+        # labels
+        sheet.write_column(row_no + 2, 0,
+                           [label[0] for label in TABLE_ROW_LABELS],
+                           self.formats["label"])
+        sheet.write_column(row_no + 2, 1,
+                           [label[1] for label in TABLE_ROW_LABELS],
+                           self.formats["label"])
+        # summaries
+        cell_ranges = [f"{xy_to_cell(row_no + i + 2, 2)}:{xy_to_cell(row_no + i + 2, table_width - 2)}"
+                       for i in range(len(TABLE_ROW_LABELS))]
+        sheet.write_column(row_no + 2, table_width - 1, map(lambda r: f"=SUM({r})", cell_ranges), self.formats["summary"])
+
     def fill_table_content(self, sheet: Worksheet, entries: list[list], row_no: int, month: int):
         for entry_no, entry in enumerate(entries):
             self.write_day_colored_row(sheet, self.formats["content"], lambda x: entry[x],
@@ -159,7 +190,10 @@ class Writer:
             self.fill_table_content(sheet, lst, row_no + 2, month_no + 1)
 
     def create_quarter_sheets(self):
-        pass
+        for quarter_no, quarter in enumerate(QUARTERS):
+            sheet: Worksheet = self.setup_quarter_sheet(quarter, quarter_no)
+            for employee_no, employee in enumerate(self.employees):
+                self.setup_quarter_table(sheet, f"{employee.last_name} {employee.name}", employee_no * TABLE_HEIGHT, self.months[:(quarter_no + 1) * 3])
 
     def create_quarter_summary(self):
         pass
@@ -168,6 +202,7 @@ class Writer:
         pass
 
     def create(self):
-        self.create_month_sheets()
-        self.create_month_summary()
+        # self.create_month_sheets()
+        # self.create_month_summary()
+        self.create_quarter_sheets()
         self.close()

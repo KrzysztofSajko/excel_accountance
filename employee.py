@@ -1,16 +1,11 @@
 from __future__ import annotations
 
 import os
-
 from dataclasses import dataclass, field
 from typing import Optional
 
-from openpyxl.cell import Cell
-from openpyxl.worksheet.worksheet import Worksheet
-
 from gender import Gender
 from summary import MonthlySummary
-from functions import find_cell_by_value
 
 
 @dataclass
