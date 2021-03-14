@@ -55,5 +55,5 @@ for month_no, month in enumerate(months):
 
 extra_holidays: list = []
 
-writer = Writer(f"Ewidencja godzin {year}.xlsx", year, employees[:10], Poland(), extra_holidays, months)
+writer = Writer(f"Ewidencja godzin {year}.xlsx", year, employees, Poland(), extra_holidays, months)
 writer.create()

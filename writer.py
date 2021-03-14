@@ -156,10 +156,6 @@ class Writer:
             self.write_day_colored_row(sheet, self.formats["content"], lambda x: entry[x],
                                        month, row_no + entry_no, 2)
 
-    def fill_quarter_table_content(self, sheet: Worksheet, employee_no: int, entries: list):
-        for i in range(len(TABLE_ROW_LABELS)):
-            sheet.write_row(employee_no * TABLE_HEIGHT + 2 + i, 2, [entry(employee_no, i, 2) for entry in entries], self.formats["content"])
-
     def close(self):
         while True:
             try:
@@ -217,9 +213,6 @@ class Writer:
                                 [f"""='{month_summary_sheet}'!{xy_to_cell(month_no * TABLE_HEIGHT + 2 + label_no, 33)}"""
                                  for month_no, month in enumerate(self.months[:month_range])],
                                 self.formats["content"])
-
-    def create_year_summary(self):
-        pass
 
     def create(self):
         self.create_month_sheets()
