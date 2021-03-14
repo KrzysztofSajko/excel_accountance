@@ -148,12 +148,18 @@ class Writer:
         # summaries
         cell_ranges = [f"{xy_to_cell(row_no + i + 2, 2)}:{xy_to_cell(row_no + i + 2, table_width - 2)}"
                        for i in range(len(TABLE_ROW_LABELS))]
-        sheet.write_column(row_no + 2, table_width - 1, map(lambda r: f"=SUM({r})", cell_ranges), self.formats["summary"])
+        sheet.write_column(row_no + 2, table_width - 1, map(lambda r: f"=SUM({r})", cell_ranges),
+                           self.formats["summary"])
 
     def fill_table_content(self, sheet: Worksheet, entries: list[list], row_no: int, month: int):
         for entry_no, entry in enumerate(entries):
             self.write_day_colored_row(sheet, self.formats["content"], lambda x: entry[x],
                                        month, row_no + entry_no, 2)
+
+    def fill_quarter_table_content(self, sheet: Worksheet, row_no: int, months: list[str]):
+        for i in range(len(TABLE_ROW_LABELS)):
+            row: int = row_no + 2 + i
+            sheet.write_row(row, 2, [f"={month}!{xy_to_cell(row, 33)}" for month in months], self.formats["content"])
 
     def close(self):
         while True:
@@ -193,7 +199,10 @@ class Writer:
         for quarter_no, quarter in enumerate(QUARTERS):
             sheet: Worksheet = self.setup_quarter_sheet(quarter, quarter_no)
             for employee_no, employee in enumerate(self.employees):
-                self.setup_quarter_table(sheet, f"{employee.last_name} {employee.name}", employee_no * TABLE_HEIGHT, self.months[:(quarter_no + 1) * 3])
+                month_range: int = (quarter_no + 1) * 3
+                self.setup_quarter_table(sheet, f"{employee.last_name} {employee.name}", employee_no * TABLE_HEIGHT,
+                                         self.months[:month_range])
+                self.fill_quarter_table_content(sheet, employee_no * TABLE_HEIGHT, self.months[:month_range])
 
     def create_quarter_summary(self):
         pass
@@ -202,7 +211,7 @@ class Writer:
         pass
 
     def create(self):
-        # self.create_month_sheets()
-        # self.create_month_summary()
+        self.create_month_sheets()
+        self.create_month_summary()
         self.create_quarter_sheets()
         self.close()
